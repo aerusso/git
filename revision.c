@@ -1236,6 +1236,85 @@ static void cherry_pick_list(struct commit_list *list, struct rev_info *revs)
 	free_patch_ids(&ids);
 }
 
+static void cleanup_ignore_merge_bases(struct commit *commit) {
+	struct commit_list *stack;
+	struct commit_list *parents;
+	stack = NULL;
+
+	commit_list_insert(commit, &stack);
+	while (stack) {
+		commit = pop_commit(&stack);
+		commit->object.flags &= !IGN_MRG_BASES_VISITING;
+
+		parents = commit->parents;
+		for (parents = commit->parents; parents; parents = parents->next)
+			commit_list_insert(parents->item, &stack);
+	}
+}
+
+static void do_ignore_merge_bases(struct commit *commit) {
+	struct commit_list *stack, *list_lr;
+	struct commit_list **parents;
+	struct commit *parent;
+	stack = NULL;
+	list_lr = NULL;
+
+	/* process every commit to be displayed exactly once */
+	commit_list_insert(commit, &stack);
+	commit->object.flags |= IGN_MRG_BASES_VISITED | IGN_MRG_BASES_VISITING;
+	while (stack) {
+		commit = pop_commit(&stack);
+		/*
+		 * process the parent nodes: removing links to
+		 * commits already visited (creating a spanning tree)
+		 */
+		parents = &(commit->parents);
+		while (*parents) {
+			parent = (*parents)->item;
+			if (parent->object.flags & IGN_MRG_BASES_VISITING) {
+				/*
+				 * We have already visited this commit, from the same root.
+				 * We do not explore it at all.
+				 */
+				pop_commit(parents);
+				continue;
+			}
+			if (!(parent->object.flags & IGN_MRG_BASES_VISITED)) {
+				/*
+				 * If we visited this commit before, but from a different root,
+				 * leave it attached, but do not explore it further.
+				 *
+				 * If we have not visited this commit yet, explore it, as usual.
+				 */
+				parent->object.flags |= IGN_MRG_BASES_VISITED | IGN_MRG_BASES_VISITING;
+				commit_list_insert(parent, &list_lr);
+			}
+			parents = &((*parents)->next);
+		}
+
+		/*
+		 * Feed the parents, right to left (reversed) onto the
+		 * stack to do a depth-first traversal of the commit graph.
+		 */
+		while (list_lr)
+			commit_list_insert(pop_commit(&list_lr), &stack);
+	}
+}
+
+static void ignore_merge_bases(struct commit_list *list)
+{
+	struct commit *prev = NULL;
+
+	for (; list; list = list->next) {
+		if (list->item->object.flags & IGN_MRG_BASES_VISITED)
+			continue;
+		if (prev)
+			cleanup_ignore_merge_bases(prev);
+		do_ignore_merge_bases(list->item);
+		prev = list->item;
+	}
+}
+
 /* How many extra uninteresting commits we want to see.. */
 #define SLOP 5
 
@@ -1439,6 +1518,9 @@ static int limit_list(struct rev_info *revs)
 				continue;
 			update_treesame(revs, c);
 		}
+
+	if (revs->ignore_merge_bases)
+		ignore_merge_bases(newlist);
 
 	revs->commits = newlist;
 	return 0;
@@ -2218,6 +2300,9 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 		revs->simplify_by_decoration = 1;
 		revs->limited = 1;
 		revs->prune = 1;
+	} else if (!strcmp(arg, "--ignore-merge-bases")) {
+		revs->limited = 1;
+		revs->ignore_merge_bases = 1;
 	} else if (!strcmp(arg, "--date-order")) {
 		revs->sort_order = REV_SORT_BY_COMMIT_DATE;
 		revs->topo_order = 1;

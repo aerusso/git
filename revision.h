@@ -37,6 +37,10 @@
 
 /* WARNING: This is also used as REACHABLE in commit-graph.c. */
 #define PULL_MERGE	(1u<<15)
+
+#define IGN_MRG_BASES_VISITED	(1u<<23)
+#define IGN_MRG_BASES_VISITING	(1u<<24)
+
 /*
  * Indicates object was reached by traversal. i.e. not given by user on
  * command-line or stdin.
@@ -134,6 +138,7 @@ struct rev_info {
 			no_walk:2,
 			remove_empty_trees:1,
 			simplify_history:1,
+			ignore_merge_bases:1,
 			show_pulls:1,
 			topo_order:1,
 			simplify_merges:1,

@@ -363,6 +363,15 @@ Default mode::
 	merges from the resulting history, as there are no selected
 	commits contributing to this merge.
 
+--ignore-merge-bases::
+	Show commits that are introduced by each merge before showing
+	the first parent of the merge but remove edges from those commits
+	to commits reachable from the first parent. When used with
+	`--graph`, this can help visualize repositories with many merges
+	when you are not interested in the merge base used for each
+	merge. It also reduces the width of the graph visualization
+	when used with `--graph`.
+
 --ancestry-path::
 	When given a range of commits to display (e.g. 'commit1..commit2'
 	or 'commit2 {caret}commit1'), only display commits that exist
