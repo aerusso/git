@@ -38,6 +38,22 @@ test_expect_success 'log --graph with merge fusing with its left and right neigh
 	EOF
 '
 
+test_expect_success 'log --graph with merge fusing with its left and right neighbors (ignore-merge-bases)' '
+	check_graph --ignore-merge-bases <<-\EOF
+	*   H
+	|\
+	| *   G
+	| |\
+	| | * F
+	| *   E
+	| |\
+	| | * D
+	| * C
+	* B
+	* A
+	EOF
+'
+
 test_expect_success 'log --graph with left-skewed merge' '
 	git checkout --orphan 0_p && test_commit 0_A &&
 	git checkout -b 0_q 0_p && test_commit 0_B &&
@@ -72,6 +88,20 @@ test_expect_success 'log --graph with left-skewed merge' '
 	EOF
 '
 
+test_expect_success 'log --graph with left-skewed merge (ignore-merge-bases)' '
+	check_graph --ignore-merge-bases <<-\EOF
+	*-----.   0_H
+	|\ \ \ \
+	| | | | * 0_G
+	| | | * 0_F
+	| | | * 0_E
+	| | * 0_D
+	| | * 0_C
+	| * 0_B
+	* 0_A
+	EOF
+'
+
 test_expect_success 'log --graph with nested left-skewed merge' '
 	git checkout --orphan 1_p &&
 	test_commit 1_A &&
@@ -96,6 +126,21 @@ test_expect_success 'log --graph with nested left-skewed merge' '
 	|/ /
 	* / 1_B
 	|/
+	* 1_A
+	EOF
+'
+
+test_expect_success 'log --graph with nested left-skewed merge (ignore-merge-bases)' '
+	check_graph --ignore-merge-bases<<-\EOF
+	*   1_H
+	|\
+	| *   1_G
+	| |\
+	| | * 1_F
+	| * 1_E
+	| * 1_D
+	* 1_C
+	* 1_B
 	* 1_A
 	EOF
 '
@@ -137,6 +182,23 @@ test_expect_success 'log --graph with nested left-skewed merge following normal 
 	EOF
 '
 
+test_expect_success 'log --graph with nested left-skewed merge following normal merge (ignore-merge-bases)' '
+	check_graph --ignore-merge-bases<<-\EOF
+	*   2_K
+	|\
+	| *   2_J
+	| |\
+	| | * 2_H
+	| | * 2_G
+	| | * 2_F
+	| * 2_E
+	| * 2_D
+	* 2_C
+	* 2_B
+	* 2_A
+	EOF
+'
+
 test_expect_success 'log --graph with nested right-skewed merge following left-skewed merge' '
 	git checkout --orphan 3_p &&
 	test_commit 3_A &&
@@ -170,6 +232,23 @@ test_expect_success 'log --graph with nested right-skewed merge following left-s
 	EOF
 '
 
+test_expect_success 'log --graph with nested right-skewed merge following left-skewed merge (ignore-merge-bases)' '
+	check_graph --ignore-merge-bases<<-\EOF
+	*   3_J
+	|\
+	| *   3_H
+	| |\
+	| | * 3_G
+	| * 3_F
+	| *   3_E
+	| |\
+	| | * 3_D
+	| * 3_C
+	| * 3_B
+	* 3_A
+	EOF
+'
+
 test_expect_success 'log --graph with right-skewed merge following a left-skewed one' '
 	git checkout --orphan 4_p &&
 	test_commit 4_A &&
@@ -198,6 +277,23 @@ test_expect_success 'log --graph with right-skewed merge following a left-skewed
 	| |/
 	| * 4_B
 	|/
+	* 4_A
+	EOF
+'
+
+test_expect_success 'log --graph with right-skewed merge following a left-skewed one (ignore-merge-bases)' '
+	check_graph --date-order --ignore-merge-bases<<-\EOF
+	*   4_H
+	|\
+	| *   4_G
+	| |\
+	| * | 4_F
+	| * |   4_E
+	| |\ \
+	| | * | 4_D
+	| |  /
+	| | * 4_C
+	| * 4_B
 	* 4_A
 	EOF
 '
@@ -239,6 +335,21 @@ test_expect_success 'log --graph with octopus merge with column joining its penu
 	EOF
 '
 
+test_expect_success 'log --graph with octopus merge with column joining its penultimate parent (ignore-merge-bases)' '
+	check_graph --ignore-merge-bases<<-\EOF
+	*   5_H
+	|\
+	| *-.   5_G
+	| |\ \
+	| | | * 5_F
+	| | * 5_E
+	| | * 5_C
+	| * 5_B
+	* 5_D
+	* 5_A
+	EOF
+'
+
 test_expect_success 'log --graph with multiple tips' '
 	git checkout --orphan 6_1 &&
 	test_commit 6_A &&
@@ -276,6 +387,29 @@ test_expect_success 'log --graph with multiple tips' '
 	| |/
 	|/|
 	* | 6_B
+	|/
+	* 6_A
+	EOF
+'
+
+test_expect_success 'log --graph with multiple tips (ignore-merge-bases)' '
+	check_graph --ignore-merge-bases 6_1 6_3 6_5 <<-\EOF
+	*   6_I
+	|\
+	| | *   6_H
+	| | |\
+	| | | * 6_G
+	| | * | 6_E
+	| | | | * 6_F
+	| |_|_|/|
+	|/| | |/
+	| | |/|
+	| |/| |
+	| * | | 6_D
+	|  / /
+	* / / 6_C
+	|/ /
+	* / 6_B
 	|/
 	* 6_A
 	EOF
@@ -365,6 +499,41 @@ test_expect_success 'log --graph with multiple tips' '
 	| |/
 	|/|
 	* | 7_B
+	|/
+	* 7_A
+	EOF
+'
+
+test_expect_success 'log --graph with multiple tips (ignore-merge-bases)' '
+	check_graph --ignore-merge-bases M_1 M_3 M_5 M_7 <<-\EOF
+	*   7_M1
+	|\
+	| | *   7_M2
+	| | |\
+	| | | * 7_H
+	| | | | *   7_M3
+	| | | | |\
+	| | | | | * 7_J
+	| | | | * | 7_I
+	| | | | | | *   7_M4
+	| |_|_|_|_|/|\
+	|/| | | | |/ /
+	| | |_|_|/| /
+	| |/| | | |/
+	| | | |_|/|
+	| | |/| | |
+	| | * | | | 7_G
+	| | | |_|/
+	| | |/| |
+	| | * | | 7_F
+	| * | | | 7_E
+	| | |/ /
+	| |/| |
+	| * | | 7_D
+	|  / /
+	* / / 7_C
+	|/ /
+	* / 7_B
 	|/
 	* 7_A
 	EOF
