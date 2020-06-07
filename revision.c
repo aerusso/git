@@ -3422,6 +3422,12 @@ static void skel_walk_step(struct rev_info *revs,
 		if ((*next)->child) {
 			comp_c = skel_slab_at(&skel->slab, (*next)->child)->component;
 
+			// ASSERT
+			if (!(*indegree_slab_at(indegree, commit) >= 2))
+				die("indegree should be >= 2");
+			// ASSERT
+			if (!(d_i->component <= comp_c))
+				die("components should be in order");
 			if (d_i->component < comp_c)
 				(*indegree_slab_at(indegree, commit))++;
 		}
@@ -3438,9 +3444,12 @@ static void skel_walk_step(struct rev_info *revs,
 	 *
 	 * If there is no principle child, allocate a new component.
 	 */
-	if (!(*next)->child)
+	if (!(*next)->child) {
 		d_i->component = skel->next_comp++;
-	else {
+		// ASSERT
+		if (!(*indegree_slab_at(indegree, commit) == 1))
+			die("indegree should be 1");
+	} else {
 		d_i->child = (*next)->child;
 		d_i->component = skel_slab_at(&skel->slab, d_i->child)->component;
 		*indegree_slab_at(indegree, commit) = 2;
