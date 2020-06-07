@@ -363,6 +363,19 @@ Default mode::
 	merges from the resulting history, as there are no selected
 	commits contributing to this merge.
 
+--ignore-merge-bases::
+	Simplify merges by removing edges to commits reachable from
+	more leftware parents, or more leftward parents of recursive
+	children. When used with `--graph`, this can help visualize
+	repositories with many merges when you are not interested in
+	the merge base used for each merge. It also reduces the width
+	of the graph visualization when used with `--graph`.
+
+	When multiple tip commits are specified, all commits reachable
+	from each tip commit (but not earlier tips) are simplified as
+	above to form a "component".  All edges between components are
+	displayed.
+
 --ancestry-path::
 	When given a range of commits to display (e.g. 'commit1..commit2'
 	or 'commit2 {caret}commit1'), only display commits that exist

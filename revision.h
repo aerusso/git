@@ -88,6 +88,21 @@ struct rev_cmdline_info {
 struct oidset;
 struct topo_walk_info;
 
+struct skel_datum {
+	int component;
+	struct commit *child;
+};
+
+define_shared_commit_slab(skel_slab, struct skel_datum);
+
+struct skel_walk_list;
+
+struct skel_info {
+	struct skel_walk_list *walk;
+	int next_comp;
+	struct skel_slab slab;
+};
+
 struct rev_info {
 	/* Starting list */
 	struct commit_list *commits;
@@ -137,6 +152,7 @@ struct rev_info {
 			show_pulls:1,
 			topo_order:1,
 			simplify_merges:1,
+			ignore_merge_bases:1,
 			simplify_by_decoration:1,
 			single_worktree:1,
 			tag_objects:1,
@@ -307,6 +323,7 @@ struct rev_info {
 	 * This is loaded from the commit-graph being used.
 	 */
 	struct bloom_filter_settings *bloom_filter_settings;
+	struct skel_info *skel_info;
 };
 
 int ref_excluded(struct string_list *, const char *path);
