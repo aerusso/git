@@ -3338,6 +3338,8 @@ static void indegree_walk_step(struct rev_info *revs)
 
 		if (*pi)
 			(*pi)++;
+		else if (revs->limited)
+			continue;
 		else
 			*pi = 2;
 
@@ -3480,6 +3482,9 @@ static void expand_topo_walk(struct rev_info *revs, struct commit *commit)
 
 		pi = indegree_slab_at(&info->indegree, parent);
 
+		if (!*pi)
+			continue;
+
 		(*pi)--;
 		if (*pi == 1)
 			prio_queue_put(&info->topo_queue, parent);
@@ -3527,12 +3532,9 @@ int prepare_revision_walk(struct rev_info *revs)
 		commit_list_sort_by_date(&revs->commits);
 	if (revs->no_walk)
 		return 0;
-	if (revs->limited) {
-		if (limit_list(revs) < 0)
-			return -1;
-		if (revs->topo_order)
-			sort_in_topological_order(&revs->commits, revs->sort_order);
-	} else if (revs->topo_order)
+	if (revs->limited && limit_list(revs) < 0)
+		return -1;
+	if (revs->topo_order)
 		init_topo_walk(revs);
 	if (revs->line_level_traverse)
 		line_log_filter(revs);
@@ -3918,7 +3920,8 @@ static struct commit *get_revision_1(struct rev_info *revs)
 					die("Failed to traverse parents of commit %s",
 						oid_to_hex(&commit->object.oid));
 			}
-		}
+		} else if (revs->topo_walk_info)
+			expand_topo_walk(revs, commit);
 
 		switch (simplify_commit(revs, commit)) {
 		case commit_ignore:
