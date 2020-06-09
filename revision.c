@@ -442,7 +442,7 @@ static struct commit *handle_commit(struct rev_info *revs,
 		if (flags & UNINTERESTING) {
 			mark_parents_uninteresting(commit);
 
-			if (!revs->topo_order || !generation_numbers_enabled(the_repository))
+			if (!revs->topo_order)
 				revs->limited = 1;
 		}
 		if (revs->sources) {
