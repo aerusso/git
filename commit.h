@@ -202,6 +202,7 @@ struct commit_list *commit_list_reverse(struct commit_list *list);
 void commit_list_free(struct commit_list *list);
 
 struct rev_info; /* in revision.h, it circularly uses enum cmit_fmt */
+struct skel_info;
 
 const char *repo_logmsg_reencode(struct repository *r,
 				 const struct commit *commit,
@@ -238,7 +239,8 @@ enum rev_sort_order {
  *                            chain together.
  *   REV_SORT_BY_COMMIT_DATE: show eligible commits in committer-date order.
  */
-void sort_in_topological_order(struct commit_list **, enum rev_sort_order);
+void sort_in_topological_order(struct commit_list **, struct skel_info *,
+			       enum rev_sort_order);
 
 struct commit_graft {
 	struct object_id oid;
