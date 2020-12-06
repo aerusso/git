@@ -428,21 +428,44 @@ static void graph_ensure_capacity(struct git_graph *graph, int num_columns)
  */
 static int graph_is_interesting(struct git_graph *graph, struct commit *commit)
 {
-	/*
-	 * If revs->boundary is set, commits whose children have
-	 * been shown are always interesting, even if they have the
-	 * UNINTERESTING or TREESAME flags set.
-	 */
-	if (graph->revs && graph->revs->boundary) {
-		if (commit->object.flags & CHILD_SHOWN)
-			return 1;
+	struct skel_datum *dat_p, *dat_c;
+	struct rev_info *revs = graph->revs;
+	struct skel_info *skel = NULL;
+
+	if (revs) {
+		/*
+		 * If revs->boundary is set, commits whose children have
+		 * been shown are always interesting, even if they have the
+		 * UNINTERESTING or TREESAME flags set.
+		 */
+		if (revs->boundary) {
+			if (commit->object.flags & CHILD_SHOWN)
+				return 1;
+		}
+
+		/*
+		 * If revs->ignore_merge_bases is set, suppress intra-component
+		 * edges that are not from the principle child.
+		 */
+		if ((revs->ignore_merge_bases) &&
+		    (skel = revs->skel_info)) {
+			dat_p = skel_slab_at(&skel->slab, commit);
+			dat_c = skel_slab_at(&skel->slab, graph->commit);
+//			printf("child: %.7s(%i) -> parent: %.7s(%i) :: ", oid_to_hex(&graph->commit->object.oid), dat_c->component, oid_to_hex(&commit->object.oid), dat_p->component);
+			if (dat_p->component == dat_c->component &&
+			    dat_p->child != graph->commit) {
+//				printf("IGNORE\n");
+				return 0;
+			}
+//			printf("keep\n");
+		}
 	}
 
 	/*
 	 * Otherwise, use get_commit_action() to see if this commit is
 	 * interesting
 	 */
-	return get_commit_action(graph->revs, commit) == commit_show;
+	return get_commit_action(revs, commit) == commit_show;
 }
 
 static struct commit_list *next_interesting_parent(struct git_graph *graph,
