@@ -78,6 +78,27 @@ test_expect_success '--graph --all' '
 	EOF
 '
 
+# Make sure that ignore_merge_bases produces a spanning tree
+test_expect_success '--graph --ignore-merge-bases --all' '
+	check_graph --ignore-merge-bases --all <<-\EOF
+	X A7
+	*   A6
+	|\
+	| * C4
+	| v C3
+	* A5
+	*-.   A4
+	|\ \
+	| | * C2
+	| | v C1
+	| * B2
+	| v B1
+	* A3
+	* A2
+	* A1
+	EOF
+'
+
 # Make sure the graph_is_interesting() code still realizes
 # that undecorated merges are interesting, even with --simplify-by-decoration
 test_expect_success '--graph --simplify-by-decoration' '
@@ -147,6 +168,19 @@ test_expect_success '--graph --full-history -- bar.txt' '
 	EOF
 '
 
+test_expect_success '--graph --ignore-merge-bases --full-history -- bar.txt' '
+	check_graph --ignore-merge-bases --full-history --all -- bar.txt <<-\EOF
+	X A7
+	*   A6
+	|\
+	| v C4
+	* A5
+	v A4
+	* A3
+	* A2
+	EOF
+'
+
 test_expect_success '--graph --full-history --simplify-merges -- bar.txt' '
 	check_graph --full-history --simplify-merges --all -- bar.txt <<-\EOF
 	X A7
@@ -156,6 +190,18 @@ test_expect_success '--graph --full-history --simplify-merges -- bar.txt' '
 	* | A5
 	* | A3
 	|/
+	* A2
+	EOF
+'
+
+test_expect_success '--graph --ignore-merge-bases --full-history --simplify-merges -- bar.txt' '
+	check_graph --ignore-merge-bases --full-history --simplify-merges --all -- bar.txt <<-\EOF
+	X A7
+	*   A6
+	|\
+	| v C4
+	v A5
+	* A3
 	* A2
 	EOF
 '
@@ -236,6 +282,30 @@ test_expect_success '--graph --boundary ^C3' '
 	o | | | A2
 	|/ / /
 	o / / A1
+	 / /
+	| o C3
+	|/
+	o C2
+	EOF
+'
+
+test_expect_success '--graph --ignore-merge-bases --boundary ^C3' '
+	check_graph --ignore-merge-bases --boundary --all ^C3 <<-\EOF
+	X A7
+	*   A6
+	|\
+	| * C4
+	* | A5
+	| |
+	|  \
+	*-. \   A4
+	|\ \ \
+	| * | | B2
+	| v | | B1
+	|  / /
+	* | | A3
+	o | | A2
+	o | | A1
 	 / /
 	| o C3
 	|/
