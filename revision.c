@@ -42,6 +42,22 @@ implement_shared_commit_slab(revision_sources, char *);
 
 static inline int want_ancestry(const struct rev_info *revs);
 
+implement_shared_commit_slab(skel_slab, struct skel_datum);
+
+static struct skel_info *new_skel_info(void)
+{
+	struct skel_info *info = xcalloc(1, sizeof(struct skel_info));
+	memset(info, '\0', sizeof(struct skel_info));
+	init_skel_slab(&info->slab);
+	return info;
+}
+
+static void free_skel_info(struct skel_info *info)
+{
+	clear_skel_slab(&info->slab);
+	free(info);
+}
+
 void show_object_with_name(FILE *out, struct object *obj, const char *name)
 {
 	const char *p;
@@ -2235,6 +2251,10 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 	} else if (!strcmp(arg, "--topo-order")) {
 		revs->sort_order = REV_SORT_IN_GRAPH_ORDER;
 		revs->topo_order = 1;
+	} else if (!strcmp(arg, "--ignore-merge-bases")) {
+		revs->topo_order = 1;
+		revs->ignore_merge_bases = 1;
+		revs->skel_info = new_skel_info();
 	} else if (!strcmp(arg, "--simplify-merges")) {
 		revs->simplify_merges = 1;
 		revs->topo_order = 1;
@@ -3394,14 +3414,183 @@ static void indegree_walk_step(struct rev_info *revs)
 	}
 }
 
+/*
+ * The skeleton walk is over edges in a graph.  Notationally, we refer to the
+ * commit (item) and the child, because we will be interested in the parents of
+ * item, not the children of child.
+ *
+ * As a special case, when seeding the skeleton walk from the commits passed on
+ * the command line, we set child to NULL.
+ */
+struct skel_walk_list {
+	struct commit *item;
+	struct skel_walk_list *next;
+	struct commit *child;
+};
+
+static void swl_pop(struct skel_walk_list **stack)
+{
+	struct skel_walk_list *top = *stack;
+
+	if (top) {
+		*stack = top->next;
+		free(top);
+	}
+	return;
+}
+
+static struct skel_walk_list **swl_append(struct commit *item,
+					  struct commit *child,
+					  struct skel_walk_list **list_p,
+					  struct rev_info *revs)
+{
+	struct skel_walk_list *new_list = xmalloc(sizeof(struct skel_walk_list));
+
+	if (repo_parse_commit_gently(revs->repo, item, 1) < 0) {
+		printf("WHAT!\n");
+		return list_p; //XXX: !!?
+	}
+
+	new_list->item = item;
+	new_list->next = *list_p;
+	new_list->child = child;
+
+	*list_p = new_list;
+	return &new_list->next;
+}
+
+static void skel_walk_step(struct rev_info *revs,
+			   struct skel_walk_list **next)
+{
+	struct indegree_slab *indegree = &revs->topo_walk_info->indegree;
+	struct skel_info *skel = revs->skel_info;
+	struct commit *commit = (*next)->item;
+	struct skel_datum *d_i = skel_slab_at(&skel->slab, commit);
+	int comp_c, first = 1;
+	struct commit_list *parents;
+
+	explore_to_depth(revs, commit_graph_generation(commit));
+
+//	printf("step");
+	/*
+	 * If the commit has already been visited, all the parents have already
+	 * been processed, but we still must count inter-component references.
+	 */
+	if (d_i->component) {
+		if ((*next)->child) {
+			comp_c = skel_slab_at(&skel->slab, (*next)->child)->component;
+
+			if (d_i->component < comp_c)
+				(*indegree_slab_at(indegree, commit))++;
+		}
+
+		swl_pop(next);
+		return;
+	}
+
+	/*
+	 * We are visiting commit for the first time:
+	 *  - count the indegree
+	 *  - mark the principle child
+	 *  - back-propagate the component
+	 *
+	 * If there is no principle child, allocate a new component.
+	 */
+	if (!(*next)->child)
+		d_i->component = skel->next_comp++;
+	else {
+		d_i->child = (*next)->child;
+		d_i->component = skel_slab_at(&skel->slab, d_i->child)->component;
+		*indegree_slab_at(indegree, commit) = 2;
+	}
+
+	/*
+	 * Push all parents onto the skeleton walk list, replacing *next.
+	 */
+	for (parents = commit->parents;
+	     parents; parents = parents->next) {
+		struct commit *parent = parents->item;
+
+		/*
+		 * Micro-optimization to reuse the skeleton walk list entry,
+		 * if possible.
+		 */
+		if (first) {
+			(*next)->item = parent;
+			(*next)->child = commit;
+
+			next = &(*next)->next;
+			first = 0;
+		} else
+			next = swl_append(parent, commit, next, revs);
+
+		if (revs->first_parent_only)
+			return;
+	}
+
+	if (first)
+		swl_pop(next);
+
+	return;
+}
+
 static void compute_indegrees_to_depth(struct rev_info *revs,
 				       timestamp_t gen_cutoff)
 {
 	struct topo_walk_info *info = revs->topo_walk_info;
 	struct commit *c;
-	while ((c = prio_queue_peek(&info->indegree_queue)) &&
-	       commit_graph_generation(c) >= gen_cutoff)
-		indegree_walk_step(revs);
+	struct skel_info *skel = NULL;
+	struct skel_walk_list **next;
+	uint32_t t, p_gen_cutoff = gen_cutoff;
+
+	if (revs->ignore_merge_bases)
+		skel = revs->skel_info;
+
+	if (!skel) {
+		while ((c = prio_queue_peek(&info->indegree_queue)) &&
+		       commit_graph_generation(c) >= gen_cutoff)
+			indegree_walk_step(revs);
+		return;
+	}
+
+	/*
+	 * Explore all edges originating from commits of appropriate generation
+	 */
+	next = &skel->walk;
+	while (*next) {
+		uint32_t generation = commit_graph_generation((*next)->item);
+		if (generation < gen_cutoff) {
+			/*
+			 * Ideally, we would explore this edge right now, but
+			 * we cannot, because we have not yet necessarily
+			 * explored more leftward commits to this depth.
+			 */
+			if ((*next)->child &&
+			    commit_graph_generation((*next)->child) < gen_cutoff) {
+				t = generation;
+				if (t < p_gen_cutoff)
+					p_gen_cutoff = t;
+			}
+
+			next = &(*next)->next;
+			continue;
+		}
+
+		skel_walk_step(revs, next);
+	}
+
+	/*
+	 * Double back to get the parents of commits above gen_cutoff.
+	 */
+	next = &skel->walk;
+	while (*next) {
+		if (commit_graph_generation((*next)->item) < p_gen_cutoff) {
+			next = &(*next)->next;
+			continue;
+		}
+
+		skel_walk_step(revs, next);
+	}
 }
 
 static void reset_topo_walk(struct rev_info *revs)
@@ -3421,6 +3610,12 @@ static void init_topo_walk(struct rev_info *revs)
 {
 	struct topo_walk_info *info;
 	struct commit_list *list;
+	struct skel_walk_list **tail = NULL;
+	struct skel_info *skel = NULL;
+
+	if (revs->ignore_merge_bases)
+		skel = revs->skel_info;
+
 	if (revs->topo_walk_info)
 		reset_topo_walk(revs);
 
@@ -3432,6 +3627,13 @@ static void init_topo_walk(struct rev_info *revs)
 	memset(&info->explore_queue, 0, sizeof(info->explore_queue));
 	memset(&info->indegree_queue, 0, sizeof(info->indegree_queue));
 	memset(&info->topo_queue, 0, sizeof(info->topo_queue));
+
+	if (skel) {
+		tail = &skel->walk;
+		*tail = NULL;
+		skel->next_comp = 1;
+	}
+
 
 	switch (revs->sort_order) {
 	default: /* REV_SORT_IN_GRAPH_ORDER */
@@ -3458,17 +3660,24 @@ static void init_topo_walk(struct rev_info *revs)
 		if (repo_parse_commit_gently(revs->repo, c, 1))
 			continue;
 
-		test_flag_and_insert(&info->explore_queue, c, TOPO_WALK_EXPLORED);
-		test_flag_and_insert(&info->indegree_queue, c, TOPO_WALK_INDEGREE);
-
 		generation = commit_graph_generation(c);
 		if (generation < info->min_generation)
 			info->min_generation = generation;
 
-		*(indegree_slab_at(&info->indegree, c)) = 1;
+		test_flag_and_insert(&info->explore_queue, c, TOPO_WALK_EXPLORED);
 
 		if (revs->sort_order == REV_SORT_BY_AUTHOR_DATE)
 			record_author_date(&info->author_date, c);
+
+		*(indegree_slab_at(&info->indegree, c)) = 1;
+
+		if (skel) {
+			tail = swl_append(c, NULL, tail, revs);
+			continue;
+		}
+
+		test_flag_and_insert(&info->indegree_queue, c, TOPO_WALK_INDEGREE);
+
 	}
 	compute_indegrees_to_depth(revs, info->min_generation);
 
@@ -3510,6 +3719,11 @@ static void expand_topo_walk(struct rev_info *revs, struct commit *commit)
 {
 	struct commit_list *p;
 	struct topo_walk_info *info = revs->topo_walk_info;
+	struct skel_info *skel = revs->skel_info;
+
+	if (!revs->ignore_merge_bases)
+		skel = NULL;
+
 	if (process_parents(revs, commit, NULL, NULL) < 0) {
 		if (!revs->ignore_missing_links)
 			die("Failed to traverse parents of commit %s",
@@ -3537,9 +3751,11 @@ static void expand_topo_walk(struct rev_info *revs, struct commit *commit)
 
 		pi = indegree_slab_at(&info->indegree, parent);
 
-		(*pi)--;
-		if (*pi == 1)
-			prio_queue_put(&info->topo_queue, parent);
+		if (!skel ||
+		    (skel_slab_at(&skel->slab, parent)->component != skel_slab_at(&skel->slab, commit)->component ||
+		     skel_slab_at(&skel->slab, parent)->child == commit ))
+			if (--(*pi) == 1)
+				prio_queue_put(&info->topo_queue, parent);
 
 		if (revs->first_parent_only)
 			return;
@@ -3588,7 +3804,9 @@ int prepare_revision_walk(struct rev_info *revs)
 		if (limit_list(revs) < 0)
 			return -1;
 		if (revs->topo_order)
-			sort_in_topological_order(&revs->commits, revs->sort_order);
+			sort_in_topological_order(&revs->commits,
+						  revs->skel_info,
+						  revs->sort_order);
 	} else if (revs->topo_order)
 		init_topo_walk(revs);
 	if (revs->line_level_traverse && want_ancestry(revs))
@@ -4072,11 +4290,13 @@ static void create_boundary_commit_list(struct rev_info *revs)
 		commit_list_insert(c, &revs->commits);
 	}
 
+	revs->ignore_merge_bases = 0;
+
 	/*
 	 * If revs->topo_order is set, sort the boundary commits
 	 * in topological order
 	 */
-	sort_in_topological_order(&revs->commits, revs->sort_order);
+	sort_in_topological_order(&revs->commits, NULL, revs->sort_order);
 }
 
 static struct commit *get_revision_internal(struct rev_info *revs)
@@ -4201,6 +4421,11 @@ struct commit *get_revision(struct rev_info *revs)
 
 const char *get_revision_mark(const struct rev_info *revs, const struct commit *commit)
 {
+	struct skel_datum *dat_p;
+	struct skel_info *skel = NULL;
+	struct commit_list *parents;
+	int component;
+
 	if (commit->object.flags & BOUNDARY)
 		return "-";
 	else if (commit->object.flags & UNINTERESTING)
@@ -4213,6 +4438,26 @@ const char *get_revision_mark(const struct rev_info *revs, const struct commit *
 		else
 			return ">";
 	} else if (revs->graph) {
+		/*
+		 * If revs->ignore_merge_bases is set and an edge is suppressed,
+		 * indicate with a different mark: 'v'.
+		 */
+		if ((revs->ignore_merge_bases) &&
+		    (skel = revs->skel_info)) {
+			component = skel_slab_at(&skel->slab, commit)->component;
+
+			for (parents = commit->parents;
+			     parents; parents = parents->next) {
+				dat_p = skel_slab_at(&skel->slab, parents->item);
+				if (dat_p->component == component &&
+				    dat_p->child != commit) {
+						if (graph_is_processing_tip(revs->graph))
+							return "V";
+						else
+							return "v";
+				}
+			}
+		}
 		if (graph_is_processing_tip(revs->graph))
 			return "X";
 		else

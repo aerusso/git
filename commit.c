@@ -798,14 +798,19 @@ int compare_commits_by_commit_date(const void *a_, const void *b_, void *unused)
 /*
  * Performs an in-place topological sort on the list supplied.
  */
-void sort_in_topological_order(struct commit_list **list, enum rev_sort_order sort_order)
+void sort_in_topological_order(struct commit_list **list,
+			       struct skel_info *skel,
+			       enum rev_sort_order sort_order)
 {
 	struct commit_list *next, *orig = *list;
 	struct commit_list **pptr;
 	struct indegree_slab indegree;
-	struct prio_queue queue;
-	struct commit *commit;
+	struct prio_queue queue, revqueue;
+	struct commit *commit, *parent;
 	struct author_date_slab author_date;
+	int *comp_p = NULL, *comp_c = NULL, next_comp = 1;
+	struct skel_datum *d_p = NULL, *d_c = NULL;
+	struct commit_list *parents;
 
 	if (!orig)
 		return;
@@ -813,20 +818,10 @@ void sort_in_topological_order(struct commit_list **list, enum rev_sort_order so
 
 	init_indegree_slab(&indegree);
 	memset(&queue, '\0', sizeof(queue));
+	memset(&revqueue, '\0', sizeof(revqueue));
 
-	switch (sort_order) {
-	default: /* REV_SORT_IN_GRAPH_ORDER */
-		queue.compare = NULL;
-		break;
-	case REV_SORT_BY_COMMIT_DATE:
-		queue.compare = compare_commits_by_commit_date;
-		break;
-	case REV_SORT_BY_AUTHOR_DATE:
+	if (sort_order == REV_SORT_BY_AUTHOR_DATE)
 		init_author_date_slab(&author_date);
-		queue.compare = compare_commits_by_author_date;
-		queue.cb_data = &author_date;
-		break;
-	}
 
 	/* Mark them and clear the indegree */
 	for (next = orig; next; next = next->next) {
@@ -835,19 +830,101 @@ void sort_in_topological_order(struct commit_list **list, enum rev_sort_order so
 		/* also record the author dates, if needed */
 		if (sort_order == REV_SORT_BY_AUTHOR_DATE)
 			record_author_date(&author_date, commit);
+		prio_queue_put(&queue, commit);
 	}
 
+	/*
+	 * When performing a skeleton walk, all commits must be processed from
+	 * highest priority to lowest priority.  The highest priority commits
+	 * appear first in orig, so we must reverse the queue to ensure they
+	 * are processed first.
+	 */
+	if (skel)
+		prio_queue_reverse(&queue);
+
 	/* update the indegree */
-	for (next = orig; next; next = next->next) {
-		struct commit_list *parents = next->item->parents;
-		while (parents) {
+	while ((commit = prio_queue_get(&queue)) != NULL) {
+		if (skel) {
+			comp_c = &skel_slab_at(&skel->slab, commit)->component;
+
+			/*
+			 * Store if we have visited the commit in its sign bit.
+			 *
+			 * Skip if we already visited, or mark that this commit
+			 * has been visisted.
+			 *
+			 * Assign a new component if none has already been
+			 * propagated to the commit.
+			 */
+			if (*comp_c > 0)
+				continue;
+
+			if (!*comp_c)
+				*comp_c = next_comp++;
+			else
+				*comp_c = -*comp_c;
+		}
+
+		for (parents = commit->parents;
+		     parents; parents = parents->next) {
 			struct commit *parent = parents->item;
 			int *pi = indegree_slab_at(&indegree, parent);
 
-			if (*pi)
+			if (!*pi)
+				continue;
+
+			if (skel) {
+				d_p = skel_slab_at(&skel->slab, parent);
+				/*
+				 * Back-propagate the child's component, and
+				 * mark the principle child.
+				 *
+				 * Only count the first intra-component
+				 * reference, but count all inter-component
+				 * references.
+				 *
+				 * Override lower-priorty (higher numerical
+				 * value) components, which will never be
+				 * visited (i.e., positive).
+				 */
+				comp_p = &d_p->component;
+				if ((*comp_p >= 0) && (*comp_p < *comp_c))
+					(*pi)++;
+				if (!*comp_p || (-*comp_p >= *comp_c)) {
+					*comp_p = -*comp_c;
+					d_p->child = commit;
+					prio_queue_put(&revqueue, parent);
+				};
+			} else
 				(*pi)++;
-			parents = parents->next;
 		}
+
+		/*
+		 * More leftward commits are higher priority, and therefore
+		 * must be processed first.
+		 */
+		if (skel)
+			while ((parent = prio_queue_get(&revqueue)) != NULL)
+				prio_queue_put(&queue, parent);
+	}
+
+	if (skel) {
+		clear_prio_queue(&revqueue);
+		clear_prio_queue(&queue);
+	}
+
+	/* reuse the priority queue */
+	switch (sort_order) {
+	default: /* REV_SORT_IN_GRAPH_ORDER */
+		queue.compare = NULL;
+		break;
+	case REV_SORT_BY_COMMIT_DATE:
+		queue.compare = compare_commits_by_commit_date;
+		break;
+	case REV_SORT_BY_AUTHOR_DATE:
+		queue.compare = compare_commits_by_author_date;
+		queue.cb_data = &author_date;
+		break;
 	}
 
 	/*
@@ -878,21 +955,34 @@ void sort_in_topological_order(struct commit_list **list, enum rev_sort_order so
 	*list = NULL;
 	while ((commit = prio_queue_get(&queue)) != NULL) {
 		struct commit_list *parents;
+		if (skel) {
+			d_c = skel_slab_at(&skel->slab, commit);
+			comp_c = &d_c->component;
+		}
 
 		for (parents = commit->parents; parents ; parents = parents->next) {
 			struct commit *parent = parents->item;
 			int *pi = indegree_slab_at(&indegree, parent);
+			if (skel) {
+				d_p = skel_slab_at(&skel->slab, parent);
+				comp_p = &d_p->component;
+			}
 
 			if (!*pi)
 				continue;
 
 			/*
-			 * parents are only enqueued for emission
+			 * Parents are only enqueued for emission
 			 * when all their children have been emitted thereby
 			 * guaranteeing topological order.
+			 *
+			 * If we are performing a skeleton walk, do not count
+			 * intra-component references that are not from the
+			 * principle child.
 			 */
-			if (--(*pi) == 1)
-				prio_queue_put(&queue, parent);
+			if (!skel || (*comp_p != *comp_c || d_p->child == commit))
+				if (--(*pi) == 1)
+					prio_queue_put(&queue, parent);
 		}
 		/*
 		 * all children of commit have already been

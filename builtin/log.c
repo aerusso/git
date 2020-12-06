@@ -312,7 +312,7 @@ static void log_show_early(struct rev_info *revs, struct commit_list *list)
 	int no_free = revs->diffopt.no_free;
 
 	revs->diffopt.no_free = 0;
-	sort_in_topological_order(&list, revs->sort_order);
+	sort_in_topological_order(&list, NULL, revs->sort_order);
 	while (list && i) {
 		struct commit *commit = list->item;
 		switch (simplify_commit(revs, commit)) {

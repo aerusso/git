@@ -903,7 +903,7 @@ int cmd_show_branch(int ac, const char **av, const char *prefix)
 		exit(0);
 
 	/* Sort topologically */
-	sort_in_topological_order(&seen, sort_order);
+	sort_in_topological_order(&seen, NULL, sort_order);
 
 	/* Give names to commits */
 	if (!sha1_name && !no_name)
