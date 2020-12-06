@@ -434,16 +434,6 @@ static int graph_is_interesting(struct git_graph *graph, struct commit *commit)
 
 	if (revs) {
 		/*
-		 * If revs->boundary is set, commits whose children have
-		 * been shown are always interesting, even if they have the
-		 * UNINTERESTING or TREESAME flags set.
-		 */
-		if (revs->boundary) {
-			if (commit->object.flags & CHILD_SHOWN)
-				return 1;
-		}
-
-		/*
 		 * If revs->ignore_merge_bases is set, suppress intra-component
 		 * edges that are not from the principle child.
 		 */
@@ -458,6 +448,16 @@ static int graph_is_interesting(struct git_graph *graph, struct commit *commit)
 				return 0;
 			}
 //			printf("keep\n");
+		}
+
+		/*
+		 * If revs->boundary is set, commits whose children have
+		 * been shown are interesting even if they have the
+		 * UNINTERESTING or TREESAME flags set.
+		 */
+		if (revs->boundary) {
+			if (commit->object.flags & CHILD_SHOWN)
+				return 1;
 		}
 	}
 
