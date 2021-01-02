@@ -439,7 +439,7 @@ static struct commit *handle_commit(struct rev_info *revs,
 		if (flags & UNINTERESTING) {
 			mark_parents_uninteresting(commit);
 
-			if (!revs->topo_order || !generation_numbers_enabled(the_repository))
+			if (!revs->topo_order)
 				revs->limited = 1;
 		}
 		if (revs->sources) {
@@ -2841,9 +2841,6 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, struct s
 			revs->limited = 1;
 		revs->topo_order = 1;
 	}
-
-	if (revs->topo_order && !generation_numbers_enabled(the_repository))
-		revs->limited = 1;
 
 	if (revs->prune_data.nr) {
 		copy_pathspec(&revs->pruning.pathspec, &revs->prune_data);
