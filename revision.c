@@ -3956,6 +3956,9 @@ static struct commit *get_revision_1(struct rev_info *revs)
 {
 	while (1) {
 		struct commit *commit;
+		struct commit_list *p;
+		unsigned add_flags = POST_WALK_SEEN;
+		unsigned flags;
 
 		if (revs->reflog_info)
 			commit = next_reflog_entry(revs->reflog_info);
@@ -3991,13 +3994,25 @@ static struct commit *get_revision_1(struct rev_info *revs)
 			}
 		}
 
+		flags = commit->object.flags;
+
 		switch (simplify_commit(revs, commit)) {
 		case commit_ignore:
+			if (flags & TIP_COMMIT)
+				add_flags |= TIP_COMMIT;
+			for (p = commit->parents; p; p = p->next)
+				if (!(p->item->object.flags & POST_WALK_SEEN))
+					p->item->object.flags |= add_flags;
 			continue;
 		case commit_error:
 			die("Failed to simplify parents of commit %s",
 			    oid_to_hex(&commit->object.oid));
 		default:
+			for (p = commit->parents; p; p = p->next) {
+				if (!(p->item->object.flags & POST_WALK_SEEN))
+					p->item->object.flags |= add_flags;
+				p->item->object.flags &= ~TIP_COMMIT;
+			}
 			if (revs->track_linear)
 				track_linear(revs, commit);
 			return commit;

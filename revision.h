@@ -34,6 +34,8 @@
 #define SYMMETRIC_LEFT	(1u<<8)
 #define PATCHSAME	(1u<<9)
 #define BOTTOM		(1u<<10)
+
+#define POST_WALK_SEEN	(1u<<22)
 #define TIP_COMMIT	(1u<<27)
 
 /* WARNING: This is also used as REACHABLE in commit-graph.c. */
