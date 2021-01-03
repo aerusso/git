@@ -3534,7 +3534,7 @@ int prepare_revision_walk(struct rev_info *revs)
 {
 	int i;
 	struct object_array old_pending;
-	struct commit_list **next = &revs->commits;
+	struct commit_list *tip, **next = &revs->commits;
 
 	memcpy(&old_pending, &revs->pending, sizeof(old_pending));
 	revs->pending.nr = 0;
@@ -3588,6 +3588,13 @@ int prepare_revision_walk(struct rev_info *revs)
 		simplify_merges(revs);
 	if (revs->children.name)
 		set_children(revs);
+
+	/*
+	 * These are *candidate* tip commits.  As get_revision steps through them
+	 * (the POST_WALK), ones that are referenced will have TIP_COMMIT unset.
+	 */
+	for (tip = revs->commits; tip; tip = tip->next)
+		tip->item->object.flags |= TIP_COMMIT;
 
 	return 0;
 }
