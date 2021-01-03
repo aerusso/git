@@ -561,7 +561,7 @@ test_expect_success '-c color.grep.matchSelected log --grep' '
 '
 
 cat > expect <<EOF
-* Second
+X Second
 * sixth
 * fifth
 * fourth
@@ -575,7 +575,7 @@ test_expect_success 'simple log --graph' '
 '
 
 cat > expect <<EOF
-123 * Second
+123 X Second
 123 * sixth
 123 * fifth
 123 * fourth
@@ -597,7 +597,7 @@ test_expect_success 'set up merge history' '
 '
 
 cat > expect <<\EOF
-*   Merge branch 'side'
+X   Merge branch 'side'
 |\
 | * side-2
 | * side-1
@@ -616,7 +616,7 @@ test_expect_success 'log --graph with merge' '
 '
 
 cat > expect <<\EOF
-| | | *   Merge branch 'side'
+| | | X   Merge branch 'side'
 | | | |\
 | | | | * side-2
 | | | | * side-1
@@ -635,7 +635,7 @@ test_expect_success 'log --graph --line-prefix="| | | " with merge' '
 '
 
 cat > expect.colors <<\EOF
-*   Merge branch 'side'
+X   Merge branch 'side'
 <BLUE>|<RESET><CYAN>\<RESET>
 <BLUE>|<RESET> * side-2
 <BLUE>|<RESET> * side-1
@@ -665,7 +665,7 @@ test_expect_success 'diff-tree --graph' '
 '
 
 cat > expect <<\EOF
-*   commit main
+X   commit main
 |\  Merge: A B
 | | Author: A U Thor <author@example.com>
 | |
@@ -749,7 +749,7 @@ test_expect_success 'set up more tangled history' '
 '
 
 cat > expect <<\EOF
-*   Merge tag 'reach'
+X   Merge tag 'reach'
 |\
 | \
 |  \
@@ -1265,7 +1265,7 @@ test_expect_success 'git log -c --follow' '
 '
 
 cat >expect <<\EOF
-*   commit COMMIT_OBJECT_NAME
+X   commit COMMIT_OBJECT_NAME
 |\  Merge: MERGE_PARENTS
 | | Author: A U Thor <author@example.com>
 | |
@@ -1540,7 +1540,7 @@ test_expect_success 'log --graph with diff and stats' '
 '
 
 cat >expect <<\EOF
-*** *   commit COMMIT_OBJECT_NAME
+*** X   commit COMMIT_OBJECT_NAME
 *** |\  Merge: MERGE_PARENTS
 *** | | Author: A U Thor <author@example.com>
 *** | |
@@ -1815,7 +1815,7 @@ test_expect_success 'log --line-prefix="*** " --graph with diff and stats' '
 '
 
 cat >expect <<-\EOF
-* reach
+X reach
 |
 | A	reach.t
 * Merge branch 'tangle'
@@ -1837,7 +1837,7 @@ test_expect_success 'log --graph with --name-status' '
 '
 
 cat >expect <<-\EOF
-* reach
+X reach
 |
 | reach.t
 * Merge branch 'tangle'

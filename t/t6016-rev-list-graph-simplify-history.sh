@@ -55,7 +55,7 @@ test_expect_success 'set up rev-list --graph test' '
 
 test_expect_success '--graph --all' '
 	check_graph --all <<-\EOF
-	* A7
+	X A7
 	*   A6
 	|\
 	| * C4
@@ -83,7 +83,7 @@ test_expect_success '--graph --all' '
 test_expect_success '--graph --simplify-by-decoration' '
 	git tag -d A4 &&
 	check_graph --all --simplify-by-decoration <<-\EOF
-	* A7
+	X A7
 	*   A6
 	|\
 	| * C4
@@ -115,7 +115,7 @@ test_expect_success 'setup: get rid of decorations on B' '
 # Graph with branch B simplified away
 test_expect_success '--graph --simplify-by-decoration prune branch B' '
 	check_graph --simplify-by-decoration --all <<-\EOF
-	* A7
+	X A7
 	*   A6
 	|\
 	| * C4
@@ -134,7 +134,7 @@ test_expect_success '--graph --simplify-by-decoration prune branch B' '
 
 test_expect_success '--graph --full-history -- bar.txt' '
 	check_graph --full-history --all -- bar.txt <<-\EOF
-	* A7
+	X A7
 	*   A6
 	|\
 	| * C4
@@ -149,7 +149,7 @@ test_expect_success '--graph --full-history -- bar.txt' '
 
 test_expect_success '--graph --full-history --simplify-merges -- bar.txt' '
 	check_graph --full-history --simplify-merges --all -- bar.txt <<-\EOF
-	* A7
+	X A7
 	*   A6
 	|\
 	| * C4
@@ -162,10 +162,10 @@ test_expect_success '--graph --full-history --simplify-merges -- bar.txt' '
 
 test_expect_success '--graph -- bar.txt' '
 	check_graph --all -- bar.txt <<-\EOF
-	* A7
+	X A7
 	* A5
 	* A3
-	| * C4
+	| X C4
 	|/
 	* A2
 	EOF
@@ -173,12 +173,12 @@ test_expect_success '--graph -- bar.txt' '
 
 test_expect_success '--graph --sparse -- bar.txt' '
 	check_graph --sparse --all -- bar.txt <<-\EOF
-	* A7
+	X A7
 	* A6
 	* A5
 	* A4
 	* A3
-	| * C4
+	| X C4
 	| * C3
 	| * C2
 	| * C1
@@ -190,7 +190,7 @@ test_expect_success '--graph --sparse -- bar.txt' '
 
 test_expect_success '--graph ^C4' '
 	check_graph --all ^C4 <<-\EOF
-	* A7
+	X A7
 	* A6
 	* A5
 	*   A4
@@ -203,7 +203,7 @@ test_expect_success '--graph ^C4' '
 
 test_expect_success '--graph ^C3' '
 	check_graph --all ^C3 <<-\EOF
-	* A7
+	X A7
 	*   A6
 	|\
 	| * C4
@@ -221,7 +221,7 @@ test_expect_success '--graph ^C3' '
 # in the code, we'll need to update this test.
 test_expect_success '--graph --boundary ^C3' '
 	check_graph --boundary --all ^C3 <<-\EOF
-	* A7
+	X A7
 	*   A6
 	|\
 	| * C4
