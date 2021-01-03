@@ -467,7 +467,7 @@ test_expect_success 'show line-log with graph' '
 	root_blob=$(git rev-parse --short HEAD~4:file.c) &&
 	null_blob=$(test_oid zero | cut -c1-7) &&
 	qz_to_tab_space >expect <<-EOF &&
-	* $head_oid Modify func2() in file.c
+	X $head_oid Modify func2() in file.c
 	| diff --git a/file.c b/file.c
 	| index $head_blob_old..$head_blob_new 100644
 	| --- a/file.c

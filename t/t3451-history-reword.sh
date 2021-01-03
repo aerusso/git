@@ -93,8 +93,8 @@ test_expect_success 'can reword commit in the middle even on detached head' '
 		EOF
 
 		expect_graph HEAD --branches <<-\EOF
-		* third_on_head
-		| * third_on_main
+		X third_on_head
+		| X third_on_main
 		|/
 		* second reworded
 		* first
@@ -180,8 +180,8 @@ test_expect_success 'can reword a commit on a different branch' '
 		test_cmp ours-before ours-after &&
 
 		expect_graph --branches <<-\EOF
-		* Reworded theirs
-		| * ours
+		X Reworded theirs
+		| X ours
 		|/
 		* base
 		EOF
@@ -211,7 +211,7 @@ test_expect_success 'can reword a merge commit' '
 		Reworded merge commit
 		EOF
 		expect_graph <<-\EOF
-		*   Reworded merge commit
+		X   Reworded merge commit
 		|\
 		| * theirs
 		* | ours

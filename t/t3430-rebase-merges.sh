@@ -87,7 +87,7 @@ test_expect_success 'create completely different structure' '
 	test_tick &&
 	git rebase -i -r A main &&
 	test_cmp_graph <<-\EOF &&
-	*   Merge the topic branch '\''onebranch'\''
+	X   Merge the topic branch '\''onebranch'\''
 	|\
 	| * D
 	| * G
@@ -264,7 +264,7 @@ test_expect_success 'with a branch tip that was cherry-picked already' '
 	test_tick &&
 	git rebase -i -r upstream-with-a2 &&
 	test_cmp_graph upstream-with-a2.. <<-\EOF
-	*   Merge branch A
+	X   Merge branch A
 	|\
 	| * A1
 	* | B1
@@ -277,7 +277,7 @@ test_expect_success '--no-rebase-merges countermands --rebase-merges' '
 	git checkout -b no-rebase-merges E &&
 	git rebase --rebase-merges --no-rebase-merges C &&
 	test_cmp_graph C.. <<-\EOF
-	* B
+	X B
 	* D
 	o C
 	EOF
@@ -292,7 +292,7 @@ test_expect_success 'do not rebase cousins unless asked for' '
 	test_tick &&
 	git rebase --rebase-merges=rebase-cousins HEAD^ &&
 	test_cmp_graph HEAD^.. <<-\EOF
-	*   Merge the topic branch '\''onebranch'\''
+	X   Merge the topic branch '\''onebranch'\''
 	|\
 	| * D
 	| * G
@@ -306,7 +306,7 @@ test_expect_success 'rebase.rebaseMerges=rebase-cousins is equivalent to --rebas
 	git checkout -b config-rebase-cousins main &&
 	git rebase HEAD^ &&
 	test_cmp_graph HEAD^.. <<-\EOF
-	*   Merge the topic branch '\''onebranch'\''
+	X   Merge the topic branch '\''onebranch'\''
 	|\
 	| * D
 	| * G
@@ -320,7 +320,7 @@ test_expect_success '--no-rebase-merges overrides rebase.rebaseMerges=no-rebase-
 	git checkout -b override-config-no-rebase-cousins E &&
 	git rebase --no-rebase-merges C &&
 	test_cmp_graph C.. <<-\EOF
-	* B
+	X B
 	* D
 	o C
 	EOF
@@ -417,7 +417,7 @@ test_expect_success 'root commits' '
 	test $(git rev-parse second-root:second-root.t) = \
 		$(git rev-parse HEAD^:second-root.t) &&
 	test_cmp_graph HEAD <<-\EOF &&
-	*   Merge the 3rd root
+	X   Merge the 3rd root
 	|\
 	| * third-root
 	* second-root
@@ -453,7 +453,7 @@ test_expect_success 'A root commit can be a cousin, treat it that way' '
 	git rebase -f -r HEAD^ &&
 	test_cmp_rev ! HEAD^2 khnum &&
 	test_cmp_graph HEAD^.. <<-\EOF &&
-	*   Merge branch '\''khnum'\'' into asherah
+	X   Merge branch '\''khnum'\'' into asherah
 	|\
 	| * yama
 	o shamkat
@@ -461,7 +461,7 @@ test_expect_success 'A root commit can be a cousin, treat it that way' '
 	test_tick &&
 	git rebase --rebase-merges=rebase-cousins HEAD^ &&
 	test_cmp_graph HEAD^.. <<-\EOF
-	*   Merge branch '\''khnum'\'' into asherah
+	X   Merge branch '\''khnum'\'' into asherah
 	|\
 	| * yama
 	|/
@@ -510,7 +510,7 @@ test_expect_success 'octopus merges' '
 	# NOTE: do not quote this heredoc, Dash 0.5.13 has a bug with heredocs
 	# that contain multibyte chars.
 	test_cmp_graph HEAD^^.. <<-EOF
-	*-.   Tüntenfüsch
+	X-.   Tüntenfüsch
 	|\\ \\
 	| | * three
 	| * | two
@@ -586,7 +586,7 @@ test_expect_success '--rebase-merges with message matched with onto label' '
 	git merge -m onto G &&
 	git rebase --rebase-merges --force-rebase E &&
 	test_cmp_graph <<-\EOF
-	*   onto
+	X   onto
 	|\
 	| * G
 	| * F

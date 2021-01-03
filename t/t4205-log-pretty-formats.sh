@@ -388,7 +388,7 @@ test_expect_success ICONV 'right alignment formatting at the nth column. i18n.lo
 test_expect_success ICONV 'right alignment formatting at the nth column with --graph. i18n.logOutputEncoding' '
 	git -c i18n.logOutputEncoding=$test_encoding log --graph --pretty="tformat:%h %>|(40)%s" >actual &&
 	iconv -f utf-8 -t $test_encoding >expected <<-EOF &&
-	* $head1                    message two
+	X $head1                    message two
 	* $head2                    message one
 	* $head3                        add bar
 	* $head4            $(commit_msg)
@@ -410,7 +410,7 @@ test_expect_success 'right alignment formatting with no padding' '
 test_expect_success 'right alignment formatting with no padding and with --graph' '
 	git log --graph --pretty="tformat:%>(1)%s" >actual &&
 	cat <<-EOF >expected &&
-	* message two
+	X message two
 	* message one
 	* add bar
 	* $(commit_msg)

@@ -241,9 +241,9 @@ test_expect_success 'can split HEAD only' '
 		n
 		EOF
 		expect_graph --branches <<-EOF
-		* ours-b
+		X ours-b
 		* ours-a
-		| * split-me
+		| X split-me
 		|/
 		* base
 		EOF
@@ -303,8 +303,8 @@ test_expect_success 'can split commit in unrelated branch' '
 		n
 		EOF
 		expect_graph --branches <<-EOF &&
-		* ours
-		| * theirs-rewritten-b
+		X ours
+		| X theirs-rewritten-b
 		| * theirs-rewritten-a
 		|/
 		* base
@@ -346,8 +346,8 @@ test_expect_success 'updates multiple descendant branches' '
 
 		# Both branches should now descend from the split commits.
 		expect_graph --branches <<-EOF
-		* on-branch
-		| * on-main
+		X on-branch
+		| X on-main
 		|/
 		* split-b
 		* split-a
