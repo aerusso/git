@@ -259,7 +259,7 @@ check_result 'N R M' --topo-order \
 
 test_expect_success 'log --graph --simplify-merges --show-pulls' '
 	cat >expect <<-\EOF &&
-	* N
+	X N
 	*   R
 	|\  
 	| * X

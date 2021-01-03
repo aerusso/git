@@ -22,7 +22,7 @@ test_expect_success 'log --graph with merge fusing with its left and right neigh
 	git checkout @^^ && git merge --no-ff _p -m H &&
 
 	check_graph <<-\EOF
-	*   H
+	X   H
 	|\
 	| *   G
 	| |\
@@ -50,7 +50,7 @@ test_expect_success 'log --graph with left-skewed merge' '
 	git checkout @^ && git merge --no-ff 0_q 0_r 0_t 0_p -m 0_H &&
 
 	check_graph <<-\EOF
-	*-----.   0_H
+	X-----.   0_H
 	|\ \ \ \
 	| | | | * 0_G
 	| |_|_|/|
@@ -84,7 +84,7 @@ test_expect_success 'log --graph with nested left-skewed merge' '
 	git checkout @^^ && git merge --no-ff 1_p -m 1_H &&
 
 	check_graph <<-\EOF
-	*   1_H
+	X   1_H
 	|\
 	| *   1_G
 	| |\
@@ -116,7 +116,7 @@ test_expect_success 'log --graph with nested left-skewed merge following normal 
 	git checkout 2_p && git merge --no-ff 2_s -m 2_K &&
 
 	check_graph <<-\EOF
-	*   2_K
+	X   2_K
 	|\
 	| *   2_J
 	| |\
@@ -152,7 +152,7 @@ test_expect_success 'log --graph with nested right-skewed merge following left-s
 	git checkout @^^ && git merge --no-ff 3_p -m 3_J &&
 
 	check_graph <<-\EOF
-	*   3_J
+	X   3_J
 	|\
 	| *   3_H
 	| |\
@@ -183,7 +183,7 @@ test_expect_success 'log --graph with right-skewed merge following a left-skewed
 	git checkout @^^ && git merge --no-ff 4_s -m 4_H &&
 
 	check_graph --date-order <<-\EOF
-	*   4_H
+	X   4_H
 	|\
 	| *   4_G
 	| |\
@@ -219,7 +219,7 @@ test_expect_success 'log --graph with octopus merge with column joining its penu
 	git merge --no-ff 5_s -m 5_H &&
 
 	check_graph <<-\EOF
-	*   5_H
+	X   5_H
 	|\
 	| *-.   5_G
 	| |\ \
@@ -258,13 +258,13 @@ test_expect_success 'log --graph with multiple tips' '
 	git merge --no-ff 6_2 -m 6_I &&
 
 	check_graph 6_1 6_3 6_5 <<-\EOF
-	*   6_I
+	X   6_I
 	|\
-	| | *   6_H
+	| | X   6_H
 	| | |\
 	| | | * 6_G
 	| | * | 6_E
-	| | | | * 6_F
+	| | | | X 6_F
 	| |_|_|/|
 	|/| | |/
 	| | |/|
@@ -284,12 +284,12 @@ test_expect_success 'log --graph with multiple tips' '
 test_expect_success 'log --graph with multiple tips and colors' '
 	test_config log.graphColors red,green,yellow,blue,magenta,cyan &&
 	cat >expect.colors <<-\EOF &&
-	*   6_I
+	X   6_I
 	<RED>|<RESET><GREEN>\<RESET>
-	<RED>|<RESET> <GREEN>|<RESET> *   6_H
+	<RED>|<RESET> <GREEN>|<RESET> X   6_H
 	<RED>|<RESET> <GREEN>|<RESET> <YELLOW>|<RESET><BLUE>\<RESET>
 	<RED>|<RESET> <GREEN>|<RESET> <YELLOW>|<RESET> * 6_G
-	<RED>|<RESET> <GREEN>|<RESET> <YELLOW>|<RESET> <BLUE>|<RESET> * 6_F
+	<RED>|<RESET> <GREEN>|<RESET> <YELLOW>|<RESET> <BLUE>|<RESET> X 6_F
 	<RED>|<RESET> <GREEN>|<RESET><RED>_<RESET><YELLOW>|<RESET><RED>_<RESET><BLUE>|<RESET><RED>/<RESET><GREEN>|<RESET>
 	<RED>|<RESET><RED>/<RESET><GREEN>|<RESET> <YELLOW>|<RESET> <BLUE>|<RESET><GREEN>/<RESET>
 	<RED>|<RESET> <GREEN>|<RESET> <YELLOW>|<RESET><GREEN>/<RESET><BLUE>|<RESET>
@@ -335,16 +335,16 @@ test_expect_success 'log --graph with multiple tips' '
 	git merge --no-ff 7_2 7_3 -m 7_M4 &&
 
 	check_graph M_1 M_3 M_5 M_7 <<-\EOF
-	*   7_M1
+	X   7_M1
 	|\
-	| | *   7_M2
+	| | X   7_M2
 	| | |\
 	| | | * 7_H
-	| | | | *   7_M3
+	| | | | X   7_M3
 	| | | | |\
 	| | | | | * 7_J
 	| | | | * | 7_I
-	| | | | | | *   7_M4
+	| | | | | | X   7_M4
 	| |_|_|_|_|/|\
 	|/| | | | |/ /
 	| | |_|_|/| /
