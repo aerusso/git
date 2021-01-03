@@ -4191,9 +4191,12 @@ const char *get_revision_mark(const struct rev_info *revs, const struct commit *
 			return "<";
 		else
 			return ">";
-	} else if (revs->graph)
-		return "*";
-	else if (revs->cherry_mark)
+	} else if (revs->graph) {
+		if (commit->object.flags & TIP_COMMIT)
+			return "X";
+		else
+			return "*";
+	} else if (revs->cherry_mark)
 		return "+";
 	return "";
 }
