@@ -67,11 +67,11 @@ static struct skel_info *new_skel_info(void)
 	return info;
 }
 
-static void free_skel_info(struct skel_info *info)
+/*static void free_skel_info(struct skel_info *info)
 {
 	clear_skel_slab(&info->slab);
 	free(info);
-}
+}*/
 
 static void mark_blob_uninteresting(struct blob *blob)
 {
