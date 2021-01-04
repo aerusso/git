@@ -52,11 +52,11 @@ static struct skel_info *new_skel_info(void)
 	return info;
 }
 
-static void free_skel_info(struct skel_info *info)
+/*static void free_skel_info(struct skel_info *info)
 {
 	clear_skel_slab(&info->slab);
 	free(info);
-}
+}*/
 
 void show_object_with_name(FILE *out, struct object *obj, const char *name)
 {
