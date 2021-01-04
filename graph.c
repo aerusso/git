@@ -191,8 +191,8 @@ struct git_graph {
 	/*
 	 * The index of the column that refers to this commit.
 	 *
-	 * If none of the incoming columns refer to this commit,
-	 * this will be equal to num_columns.
+	 * If none of the incoming columns refer to this commit, this
+	 * will be equal to num_columns.  See graph_is_processing_tip().
 	 */
 	int commit_index;
 	/*
@@ -1533,4 +1533,8 @@ void graph_show_commit_msg(struct git_graph *graph,
 		if (newline_terminated)
 			putc('\n', file);
 	}
+}
+
+int graph_is_processing_tip(struct git_graph *graph) {
+	return (graph->commit_index == graph->num_columns);
 }

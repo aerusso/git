@@ -257,4 +257,10 @@ void graph_show_commit_msg(struct git_graph *graph,
 			   FILE *file,
 			   struct strbuf const *sb);
 
+/*
+ * Determine if the commit currently being processed is a tip commit---that
+ * is, one that is not the parent of any shown commit.
+ */
+int graph_is_processing_tip(struct git_graph *graph);
+
 #endif /* GRAPH_H */
