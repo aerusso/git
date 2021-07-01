@@ -194,7 +194,7 @@ test_expect_success '--graph --full-history --simplify-merges -- bar.txt' '
 	EOF
 '
 
-test_expect_success '--graph --ignore-merge-bases --full-history --simplify-merges -- bar.txt' '
+test_expect_failure '--graph --ignore-merge-bases --full-history --simplify-merges -- bar.txt' '
 	check_graph --ignore-merge-bases --full-history --simplify-merges --all -- bar.txt <<-\EOF
 	X A7
 	*   A6
