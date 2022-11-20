@@ -1,0 +1,4 @@
+#!/bin/bash
+e_msg="$(escape-grep "$1")"
+shift 1
+git --no-pager log --pretty=format:%H --grep="${e_msg}" "$@"

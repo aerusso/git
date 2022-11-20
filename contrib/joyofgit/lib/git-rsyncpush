@@ -1,0 +1,16 @@
+#! /bin/bash
+set -e
+
+refspec=HEAD
+
+[[ -n $1 ]]
+
+if [[ -n $2 ]] ; then
+    refspec="$2"
+fi
+
+address=$(git config rsyncbranch${1}.address)
+
+git rsync "$refspec" $address
+git branch -f "$1" "$refspec"
+$(git config rsyncbranch${1}.posthook || echo /bin/true)

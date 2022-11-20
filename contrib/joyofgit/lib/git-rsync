@@ -1,0 +1,13 @@
+#! /bin/bash
+set -e
+
+remote_path="${2#*:}"
+
+cd "$(git rev-parse --show-toplevel)"
+
+temp="$(mktemp -d)"
+
+git-fsarchive "$1" "$temp/$(basename $remote_path)"
+
+rsync -az --progress "$temp/$(basename $remote_path)/" "$2"
+rm -r "$temp"

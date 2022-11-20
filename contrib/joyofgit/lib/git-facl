@@ -1,0 +1,186 @@
+#!/usr/bin/env python3
+import os, sys, functools, itertools
+import argparse, subprocess, re
+from pathlib import Path
+from collections import defaultdict
+toplevel = subprocess.run(['git', 'rev-parse', '--show-toplevel'], check=True, capture_output=True).stdout[:-1].decode('utf8')
+
+def get_files(ns):
+    #sub = subprocess.run(['git', 'sparse-checkout', 'list'], check=True, capture_output)
+    #regexps = []
+
+    #for l in sub.stdout.split(b'\n'):
+    #    if not l:
+    #        continue
+
+    #    regexps.append(re.compile(l[:-1].decode('ascii')))
+
+    # TODO: update .facl based on the files added/removed/whatever
+    sub = subprocess.Popen(['git', 'status', '--porcelain', '-z'], stdout=subprocess.PIPE, cwd=toplevel)
+    reader = iter(functools.partial(sub.stdout.read, 1), b'')
+    files = defaultdict(list)
+    while True:
+        line = b''.join(itertools.takewhile(b'\0'.__ne__, reader))
+        if not line:
+            break
+
+        line = line.decode('utf-8')
+        files[line[3:]].append(line[:2])
+    balance, _ = sub.communicate()
+    assert not balance
+    assert not sub.returncode
+
+    sub = subprocess.Popen(['git', 'ls-files', '--full-name', '-zv'], stdout=subprocess.PIPE, cwd=toplevel)
+    reader = iter(functools.partial(sub.stdout.read, 1), b'')
+    do_files = []
+    directories = set()
+    sparse = None
+    while True:
+        line = b''.join(itertools.takewhile(b'\0'.__ne__, reader))
+        if not line:
+            break
+
+        line = line.decode('utf-8')
+        mod, filename = line.split(' ')
+        status = files.get(filename, ('  ',))
+        if filename == ns.facl_file:
+            if mod == 'S':
+                sparse = True
+            else:
+                sparse = False
+            continue
+        elif mod == 'S':
+            continue
+        elif (status[0][0] == 'D') or (status[0][1] == 'D'):
+            continue
+        # check other things?
+
+        f = Path(filename).parent
+        do_files.append(filename)
+
+        while True:
+            f_str = str(f)
+            if f_str in directories:
+                break
+            directories.add(f_str)
+            do_files.append(f_str)
+            f = f.parent
+
+    balance, _ = sub.communicate()
+    assert not balance
+    assert not sub.returncode
+    return sorted(do_files), sparse
+
+    #args = ['git', 'ls-files', '--name-only', '--full-name', 'HEAD', '-z']
+    if not ns.no_recurse:
+        args.append('-r')
+    if not ns.no_directories:
+        args.append('-t')
+    if ns.files:
+        args.append('--')
+        args.extend(ns.files)
+    print(args)
+    sub = subprocess.Popen(args, stdout=subprocess.PIPE)
+    reader = iter(functools.partial(sub.stdout.read, 1), b'')
+    files = []
+    while True:
+        line = b''.join(itertools.takewhile(b'\0'.__ne__, reader))
+        if line:
+            files.append(line)
+        else:
+            break
+
+    print(files)
+
+
+def do_collect(ns):
+    files, sparse = get_files(ns)
+
+    if not files:
+        sys.stderr.write("No files to process.\n")
+        return 1
+    sub = subprocess.run(['getfacl', '--',  *files], cwd=toplevel, capture_output=True)
+    if sub.returncode:
+        sys.stdout.buffer.write(sub.stderr)
+
+    facl_content = sub.stdout
+
+    if ns.sparse and sparse:
+        sub = subprocess.run(['git', 'show', f':{ns.facl_file}'], check=True, capture_output=True)
+        if sub.stdout == facl_content:
+            return 0
+
+        sub = subprocess.run(['git',  'hash-object', '-t', 'blob', '-w', '--stdin'], cwd=toplevel, check=True, capture_output=True, input=facl_content)
+        the_hash = sub.stdout[:-1].decode('ascii')
+        sub = subprocess.run(['git', 'update-index', '--add', '--cacheinfo', f'10644,{the_hash},{ns.facl_file}'], check=True)
+        sub = subprocess.run(['git', 'update-index', '--skip-worktree', ns.facl_file], check=True)
+    else:
+        try:
+            with open(Path(toplevel)/ns.facl_file, 'rb') as f:
+                orig_content = f.read()
+            if orig_content == facl_content:
+                return 0
+        except FileNotFoundError:
+            pass
+        with open(Path(toplevel)/ns.facl_file, 'wb') as f:
+            f.write(facl_content)
+
+    return 0
+
+def do_apply(ns):
+    if ns.staged:
+        src = ""
+    else:
+        src = "HEAD"
+    sub = subprocess.run(['git', 'show', f'{src}:{ns.facl_file}'], check=True, capture_output=True)
+
+    facl_content = sub.stdout
+
+    sub = subprocess.run(['setfacl', '--restore=-'], cwd=toplevel, check=True, input=facl_content)
+
+    return 0
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        prog="git-facl",
+        description="Manage file systemc ACLs in git"
+    )
+
+    parser.add_argument("--facl-file", dest='facl_file', default='.facl', help="File containing the ACLs [.facl]")
+    #parser.add_argument("--no-recurse", dest='no_recurse', action='store_true', help="Do not recurse")
+    #parser.add_argument("--no-directory", dest='no_directories', action='store_true', help="Do not act on directories")
+    #parser.add_argument("--toplevel", dest="toplevel", action="store_true", help="Act on the top level directory")
+    #parser.add_argument("files", nargs='*', help="Filesystem objects to act on")
+#    parser.add_argument("--staged", dest="staged", action="store_true", help="Use staged ACL")
+#    parser.add_argument("--commit", dest="commit", action="store", default=None, help="Use ACL from commit [default HEAD]")
+
+    subparsers = parser.add_subparsers()
+    parser_apply = subparsers.add_parser('apply', help="Apply ACLs to filesytem objects ")
+    parser_apply.add_argument("--staged", dest='staged', default=False, help="Use the staged (index) version of facl [False]")
+    parser_apply.set_defaults(func=do_apply)
+
+    parser_collect = subparsers.add_parser('collect', help="Collect ACLs to filesytem objects ")
+    parser_collect.add_argument("--no-sparse", action="store_false", dest='sparse', default=True, help="Suppress sparse facl management")
+    parser_collect.set_defaults(func=do_collect)
+
+    ns = parser.parse_args(sys.argv[1:])
+    sys.exit(ns.func(ns))
+
+
+#
+#cmd="$1"
+#shift 1
+#
+#
+#
+#case "$cmd" in
+#    apply)
+#      setfacl
+#        ;;
+#    record)
+#      git ls-tree HEAD -r --name-only | xargs getfacl
+#        ;;
+#esac
+#
+#git ls-tree -r --name-only |

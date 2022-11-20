@@ -1,0 +1,23 @@
+#!/bin/bash
+set -e
+
+dir="$(mktemp -d "${XDG_RUNTIME_DIR=/tmp}/interdiff.XXXXX" )"
+
+close() {
+  rm "${dir}/a" || true
+  rm "${dir}/b" || true
+  rmdir "${dir}"
+}
+
+trap close EXIT SIGTERM SIGQUIT SIGHUP
+
+argc="$#"
+diffend=("${@:$argc-1}")
+
+A="${dir}/a"
+B="${dir}/b"
+
+git show "${diffend[0]}" > "$A"
+git show "${diffend[1]}" > "$B"
+
+git diff "${@:1:$argc-2}" --no-index "$A" "$B"

@@ -1,0 +1,36 @@
+autoload -Uz vcs_info
+zstyle ':vcs_info:*' actionformats '%F{5}(%f%s%F{5})%F{3}-%F{5}[%F{2}%b%F{3}|%F{1}%a%F{5}]%f '
+zstyle ':vcs_info:*' formats '%F{5}(%f%s%F{5})%F{3}-%F{5}[%F{2}%b%F{5}]%f '
+zstyle ':vcs_info:(sv[nk]|bzr):*' branchformat '%b%F{1}:%F{3}%r'
+zstyle ':vcs_info:*' enable git cvs svn hg
+
+__vcs_info_wrapper() {
+ case "$(df -T "." 2>/dev/null | awk '{print $2}' | tail -n1)" in
+     fuse.sshfs|nfs|fuse.kio-fuse)
+   ;;
+     *)
+     vcs_info
+     if [[ -n "$vcs_info_msg_0_" ]]; then
+         __prompt_special_status="%{$fg[grey]%}${vcs_info_msg_0_}%{$reset_color%}"$'\n'
+     else
+         __prompt_special_status=""
+     fi
+   ;;
+ esac
+}
+
+chpwd() {
+  __vcs_info_wrapper
+  __COLORED_PWD="$(__color_pwd "$PWD")"
+}
+
+if [ -n "$2" ] ; then
+    if GIT_DIR="$(cd "$2" && git rev-parse --git-dir)" ; then
+        export GIT_WORK_TREE="$(cd "$2" && readlink -f "$(git rev-parse --show-toplevel)")"
+        export GIT_DIR="$(cd "$2" && readlink -f "$GIT_DIR")"
+    else
+        unset GIT_DIR
+    fi
+fi
+
+chpwd

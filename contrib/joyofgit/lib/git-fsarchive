@@ -1,0 +1,13 @@
+#!/bin/sh
+set -e
+
+mkdir $2
+git archive $1 | tar -x -C $2
+
+INNERSCRIPT='
+    rev=$(git rev-list -n1 --all $1 -- $3)
+    TIME=$(git show -s --format=%cI $rev)
+    touch -m -d $TIME $2/$3
+'
+
+git ls-tree --name-only -r --full-tree $1 | xargs -d '\n' -L 1 sh -c "$INNERSCRIPT" " " $1 $2
