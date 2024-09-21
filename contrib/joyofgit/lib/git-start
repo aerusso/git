@@ -1,0 +1,10 @@
+#!/bin/sh
+
+base="$(basename "$(pwd)")"
+new="/tmp/src/${base%%.git}"
+
+if [ $# -eq 0 ] ; then
+    git worktree add "$new" "$(git rev-parse --abbrev-ref HEAD)"
+else
+    git worktree add "$new" "$@"
+fi
