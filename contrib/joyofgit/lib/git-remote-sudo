@@ -1,0 +1,7 @@
+#!/bin/sh
+
+remote="$1"
+target="$2"
+target_repo="${target#*:}"
+target_user="${target%%:*}"
+exec /usr/lib/git-core/git-remote-ext "$remote" "sudo -iu ${target_user} %S ${target_repo}"
