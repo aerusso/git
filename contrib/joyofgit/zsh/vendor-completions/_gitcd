@@ -1,0 +1,7 @@
+#compdef gitcd
+
+local topdir
+
+if topdir="$(git rev-parse --show-toplevel 2>/dev/null)" && [ -d "$topdir" ]; then
+    _path_files -W topdir -/
+fi

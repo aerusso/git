@@ -1,0 +1,7 @@
+#autoload
+
+gitcd() {
+ local dir
+ dir="$(git rev-parse --show-toplevel)" || return
+ cd "${dir}/${1}"
+}

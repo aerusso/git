@@ -1,0 +1,15 @@
+#!/bin/bash
+
+scriptname="$1"
+shift 1
+
+if dir="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" && [ -d "$dir" ]; then
+    candidate="${dir}/scripts/${scriptname}"
+    [ -x "$candidate" ] && exec "$candidate" "$@"
+fi
+
+candidate="${XDG_CONFIG_HOME:-${HOME}/.config}/git/scripts}/${scriptname}"
+[ -x "$candidate" ] && exec "$candidate" "$@"
+
+echo "No script $scriptname found!"
+exit 127
