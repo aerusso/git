@@ -58,9 +58,9 @@ test_strip_patch_header () {
 #	D---E---F branch
 #
 #	git log --all --graph
-#	* commit
+#	X commit
 #	|    B
-#	| * commit
+#	| X commit
 #	| |    F
 #	* | commit
 #	| |    A
@@ -102,9 +102,9 @@ left_trim () {
 }
 
 trim_graph () {
-	# graphs start with * or |
+	# graphs start with *. X, or |
 	# followed by a space or / or \
-	"$PERL_PATH" -pe 's@^((\*|\|)( |/|\\))+@@'
+	"$PERL_PATH" -pe 's@^((X|\*|\|)( |/|\\))+@@'
 }
 
 test_expect_success 'diff-highlight highlights the beginning of a line' '
